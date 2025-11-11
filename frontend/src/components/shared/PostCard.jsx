@@ -1,6 +1,18 @@
-import React, { useState, useMemo } from "react"
+import React, { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Calendar, Clock, ArrowRight, Image as ImageIcon } from "lucide-react"
+import { htmlToText, makeExcerpt } from "../../lib/html" // keep your util
+
+// helper: choose the first NON-EMPTY preview source after stripping HTML
+const firstNonEmptyPreview = (...candidates) => {
+  for (const c of candidates) {
+    if (typeof c === "string") {
+      const t = htmlToText(c)
+      if (t.length) return t
+    }
+  }
+  return ""
+}
 
 const PostCard = ({ post = {} }) => {
   const {
@@ -19,29 +31,40 @@ const PostCard = ({ post = {} }) => {
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const href = `/post/${slug}`
+  const href = slug ? `/post/${slug}` : "#"
   const imgSrc = image || ""
   const cat = category?.toString() || "News"
-  const date = createdAt ? new Date(createdAt).toLocaleDateString() : ""
+  const date = createdAt
+    ? new Date(createdAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : ""
 
-  const text =
-    excerpt ||
-    summary ||
-    description ||
-    (typeof body === "string" ? body : "") ||
-    (typeof content === "string" ? content : "")
-  const preview =
-    text && text.length > 140 ? `${text.slice(0, 140)}…` : text || ""
+  // ✔ pick first non-empty (after stripping)
+  const plainText = useMemo(
+    () =>
+      firstNonEmptyPreview(
+        excerpt,
+        summary,
+        description,
+        typeof body === "string" ? body : "",
+        typeof content === "string" ? content : ""
+      ),
+    [excerpt, summary, description, body, content]
+  )
 
+  // preview + read time from plain text (no HTML)
+  const preview = useMemo(() => makeExcerpt(plainText, 100), [plainText])
   const readMins = useMemo(() => {
-    const words =
-      (typeof text === "string" ? text.trim().split(/\s+/).length : 0) || 0
-    return Math.max(1, Math.ceil(words / 225)) // ~225 wpm
-  }, [text])
+    const words = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0
+    return Math.max(1, Math.ceil(words / 225))
+  }, [plainText])
 
   return (
     <article className="group overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <Link to={href} className="block">
+      <Link to={href} className="block" aria-disabled={!slug}>
         {/* Media */}
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-gradient-to-br from-emerald-50 to-sky-50">
           {!imgError && imgSrc && (
@@ -49,6 +72,7 @@ const PostCard = ({ post = {} }) => {
               src={imgSrc}
               alt={title}
               loading="lazy"
+              referrerPolicy="no-referrer"
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
               className={`h-full w-full object-cover transition-transform duration-500 ${
@@ -57,12 +81,12 @@ const PostCard = ({ post = {} }) => {
             />
           )}
 
-          {/* shimmer while loading */}
+          {/* shimmer */}
           {!imgLoaded && !imgError && (
             <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100" />
           )}
 
-          {/* fallback if error/no image */}
+          {/* fallback */}
           {(imgError || !imgSrc) && (
             <div className="absolute inset-0 flex items-center justify-center text-emerald-400/70">
               <ImageIcon className="h-10 w-10" strokeWidth={1.5} />
@@ -82,9 +106,9 @@ const PostCard = ({ post = {} }) => {
             {title}
           </h3>
 
-          {preview && (
+          {preview ? (
             <p className="mt-2 text-sm text-slate-600 line-clamp-3">{preview}</p>
-          )}
+          ) : null}
 
           <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
             <span className="inline-flex items-center gap-2">
@@ -99,7 +123,6 @@ const PostCard = ({ post = {} }) => {
               <span>{readMins} min read</span>
             </span>
 
-            {/* subtle affordance, not a big button */}
             <span className="inline-flex items-center font-semibold text-emerald-700">
               Read more
               <ArrowRight

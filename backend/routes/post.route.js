@@ -11,7 +11,7 @@ const router = express.Router()
 
 router.post("/create", verifyToken, create)
 router.get("/getposts", getPosts)
-router.delete("/deletepost/:postId/:userId", verifyToken, deletepost)
-router.put("/updatepost/:postId/:userId", verifyToken, updatepost)
+router.delete("/deletepost/:postId", verifyToken, deletepost)
+router.put("/updatepost/:postId", verifyToken, updatepost)
 
 export default router

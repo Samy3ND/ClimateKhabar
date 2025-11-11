@@ -52,7 +52,7 @@ return (
         {currentUser && currentUser.isAdmin && (
           <li>
             <Link
-              to={""}
+              to={"/dashboard?tab=dashboard"}
               className="flex items-center p-3 hover:bg-emerald-50 rounded-xl transition-all duration-300 group hover:translate-x-2 border border-transparent hover:border-emerald-200"
             >
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-emerald-200">

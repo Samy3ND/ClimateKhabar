@@ -159,9 +159,11 @@ const EditPost = () => {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Category</SelectLabel>
-                <SelectItem value="worldnews">World News</SelectItem>
-                <SelectItem value="sportsnews">Sports News</SelectItem>
-                <SelectItem value="localnews">Local News</SelectItem>
+                <SelectItem value="climate&environment">Climate & Environment</SelectItem>
+                <SelectItem value="energy&innovation">Energy & Innovation</SelectItem>
+               <SelectItem value="policy&cliamtejustice">Policy & Climate Justice</SelectItem>
+                <SelectItem value="resilance&disaster">Resilience & Disasters</SelectItem>
+                <SelectItem value="opinion&insights">Opinion & Insights</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

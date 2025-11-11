@@ -224,9 +224,11 @@ return (
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Categories</SelectLabel>
-                <SelectItem value="worldnews" className="focus:bg-emerald-50 rounded-lg">🌍 World News</SelectItem>
-                <SelectItem value="sportsnews" className="focus:bg-emerald-50 rounded-lg">⚽ Sports News</SelectItem>
-                <SelectItem value="localnews" className="focus:bg-emerald-50 rounded-lg">📍 Local News</SelectItem>
+                <SelectItem value="climate&environment">Climate & Environment</SelectItem>
+                <SelectItem value="energy&innovation">Energy & Innovation</SelectItem>
+                <SelectItem value="policy&cliamtejustice">Policy & Climate Justice</SelectItem>
+                <SelectItem value="resilance&disaster">Resilience & Disasters</SelectItem>
+                <SelectItem value="opinion&insights">Opinion & Insights</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

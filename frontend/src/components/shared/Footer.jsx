@@ -73,8 +73,16 @@ const Footer = () => {
           &copy; {new Date().getFullYear()} Climate Khabar. All rights reserved.
         </p>
         <p className="mt-4 text-gray-500">
-          Developed by <a href="www.kcsamyog.com.np" className="text-blue-500 hover:text-gray-400 transition-colors">Samyog</a>
-        </p>
+  Developed by{" "}
+  <a
+    href="https://kcsamyog.com.np"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-500 hover:text-gray-400 transition-colors"
+  >
+    Samyog
+  </a>
+</p>
       </div>
     </footer>
   )
