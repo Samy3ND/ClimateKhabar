@@ -1,6 +1,7 @@
 import {AdSlot} from "@/components/shared/Advertise"
 import PostCard from "@/components/shared/PostCard"
 import { Button } from "@/components/ui/button"
+import ClimateNews from "@/components/shared/ClimateNews"
 import { ArrowDown, ArrowRight } from "lucide-react"
 import React, { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
@@ -172,6 +173,12 @@ const Home = () => {
     )}
   </div>
 </section>
+
+<section className="max-w-7xl mx-auto px-4 mt-10 mb-16">
+    
+      <ClimateNews pageSize={6} />
+</section>
+
     </div>
   )
 }
