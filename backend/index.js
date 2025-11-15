@@ -8,6 +8,8 @@ import userRoutes from "./routes/user.route.js"
 import postRoutes from "./routes/post.route.js"
 import commentRoutes from "./routes/comment.route.js"
 import externalNewsRoutes from "./routes/externalNews.route.js"
+import aiRoutes from "./routes/ai.route.js";
+import translateRoutes from "./routes/translate.route.js";
 
 dotenv.config()
 
@@ -40,6 +42,9 @@ app.use("/api/user", userRoutes)
 app.use("/api/post", postRoutes)
 app.use("/api/comment", commentRoutes)
 app.use("/api/external", externalNewsRoutes);
+app.use(express.json({ limit: "1mb" }));
+app.use("/api/ai", aiRoutes);
+app.use("/api/translate", translateRoutes);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500
