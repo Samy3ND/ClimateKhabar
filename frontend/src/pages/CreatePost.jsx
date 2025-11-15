@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { ArrowLeft, Loader2, Send, Upload } from "lucide-react"
+import { ArrowLeft, Loader2, Send, Upload, Wand2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label"
 import ReactQuill from "react-quill"
 import "react-quill/dist/quill.snow.css"
 import { uploadFile, getFilePreviewUrl } from "@/lib/appwrite/uploadImage"
+import { parse } from "postcss"
 
-// 🔹 Simple inline AuthorBadge (you can also keep it in components/shared)
+// 🔹 Simple inline AuthorBadge
 const AuthorBadge = ({ user }) => {
   if (!user) return null
   return (
@@ -36,6 +37,7 @@ const AuthorBadge = ({ user }) => {
 const CreatePost = () => {
   const { toast } = useToast()
   const navigate = useNavigate()
+  const quillRef = useRef(null)
 
   const [currentUser, setCurrentUser] = useState(null)
   const [file, setFile] = useState(null)
@@ -43,6 +45,7 @@ const CreatePost = () => {
   const [imageUploadError, setImageUploadError] = useState(null)
   const [formData, setFormData] = useState({})
   const [createPostError, setCreatePostError] = useState(null)
+  const [generatingContent, setGeneratingContent] = useState(false)
 
   // ✅ Load current user from cookie session
   useEffect(() => {
@@ -51,6 +54,78 @@ const CreatePost = () => {
       .then((data) => setCurrentUser(data))
       .catch(() => setCurrentUser(null))
   }, [])
+
+  // ✅ AI Content Generation
+const generateContent = async () => {
+  if (!formData.title) {
+    toast({
+      title: "Title required",
+      description: "Please enter a title first",
+      variant: "destructive"
+    })
+    return
+  }
+
+  try {
+    setGeneratingContent(true)
+    
+    const response = await fetch("/api/post/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt: formData.title
+      }),
+    })
+
+    // Check if we got a response at all
+    if (!response) {
+      throw new Error("No response from server")
+    }
+
+    // Check if response is OK before trying to parse JSON
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Server error: ${response.status} - ${errorText}`)
+    }
+
+    // Now safely parse JSON
+    const data = await response.json()
+
+    if (data.success && data.content) {
+      setFormData(prev => ({ 
+        ...prev, 
+        content: data.content 
+      }))
+      
+      toast({
+        title: "Content Generated!",
+        description: "AI has generated content based on your title",
+      })
+    } else {
+      toast({
+        title: "Generation failed",
+        description: data.message || "Unable to generate content",
+        variant: "destructive"
+      })
+    }
+  } catch (error) {
+    console.error("AI Generation error:", error)
+    toast({
+      title: "Generation error",
+      description: error.message || "Failed to generate content. Please try again.",
+      variant: "destructive"
+    })
+  } finally {
+    setGeneratingContent(false)
+  }
+}
+
+  // ✅ Check if AI button should be enabled
+  const isAIGenerationEnabled = () => {
+    return formData.category === "opinion&insights" && formData.title
+  }
 
   // ✅ Image upload
   const handleUploadImage = async () => {
@@ -84,7 +159,7 @@ const CreatePost = () => {
       const res = await fetch("/api/post/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // 👈 send cookie session
+        credentials: "include",
         body: JSON.stringify(formData),
       })
 
@@ -112,7 +187,7 @@ const CreatePost = () => {
         <Link to="/dashboard?tab=dashboard">
           <Button
             variant="outline"
-            className="rounded-lg border-slate-300 text-white bg-emerald-600 hover:bg-emerald-700 hover:text-white "
+            className="rounded-lg border-slate-300 text-white bg-emerald-600 hover:bg-emerald-700 hover:text-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
@@ -171,6 +246,31 @@ const CreatePost = () => {
               </div>
             </div>
 
+            {/* AI Generation Button - Only for Opinion & Insights */}
+            {formData.category === "opinion&insights" && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={generateContent}
+                  disabled={!formData.title || generatingContent}
+                  variant="outline"
+                  className="border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 rounded-lg transition-all duration-300"
+                >
+                  {generatingContent ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Wand2 className="w-4 h-4" />
+                      Generate AI Content
+                    </div>
+                  )}
+                </Button>
+              </div>
+            )}
+           
             {/* Image upload */}
             <div className="space-y-4">
               <Label className="text-slate-700 font-medium">Featured Image</Label>
@@ -228,13 +328,22 @@ const CreatePost = () => {
 
             {/* Content */}
             <div className="space-y-4">
-              <Label className="text-slate-700 font-medium">Article Content</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-slate-700 font-medium">Article Content</Label>
+                {formData.category === "opinion&insights" && formData.title && (
+                  <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                    ✨ AI Generation Available
+                  </div>
+                )}
+              </div>
               <div className="rounded-lg border border-slate-300 overflow-hidden">
                 <ReactQuill
+                  ref={quillRef}
                   theme="snow"
                   placeholder="Write your article content here..."
                   className="h-72 mb-12"
                   required
+                  value={formData.content || ''}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, content: value }))
                   }

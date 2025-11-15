@@ -2,6 +2,7 @@
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js"; // to fetch username/avatar for denorm
 import { errorHandler } from "../utils/error.js";
+import main from "./gemini.js";
 
 function slugify(title) {
   return title
@@ -142,3 +143,30 @@ export const updatepost = async (req, res, next) => {
     next(error);
   }
 };
+
+export const generateContent = async (req, res, next) => {
+  try {
+    const { prompt } = req.body;  
+    
+    if (!prompt) {
+      return res.status(400).json({
+        success: false, 
+        message: "Prompt is required"
+      });
+    }
+    
+    console.log("Generating content for:", prompt);
+    
+    // Make sure you're passing the prompt correctly to main()
+    const content = await main(prompt); // Just pass the prompt string
+    
+    res.json({ success: true, content });
+    
+  } catch (error) {
+    console.error("Backend error in generateContent:", error);
+    res.status(500).json({
+      success: false, 
+      message: error.message || "Internal server error in AI generation"
+    });
+  }
+}
