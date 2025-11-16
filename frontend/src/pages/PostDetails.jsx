@@ -7,12 +7,17 @@ import {
   Volume2,
   Languages,
   Sparkles,
+  Share2,
+  Download,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { AdSlot } from "@/components/shared/Advertise"
 import CommentSection from "@/components/shared/CommentSection"
 import PostCard from "@/components/shared/PostCard"
+
+import { jsPDF } from "jspdf"
+import html2canvas from "html2canvas"
 
 const LANGS = [
   { code: "en", label: "English" },
@@ -32,24 +37,34 @@ const PostDetails = () => {
   const [post, setPost] = useState(null)
   const [recentArticles, setRecentArticles] = useState(null)
 
-  // AI feature states
+  // AI Summary
   const [sumLoading, setSumLoading] = useState(false)
   const [summary, setSummary] = useState("")
   const [sumError, setSumError] = useState("")
 
+  // Translate
   const [tgtLang, setTgtLang] = useState("en")
   const [tLoading, setTLoading] = useState(false)
   const [translatedHTML, setTranslatedHTML] = useState("")
   const [isTranslated, setIsTranslated] = useState(false)
   const [tError, setTError] = useState("")
 
-  // Fetch post
+  // Text-to-speech
+  const [isSpeaking, setIsSpeaking] = useState(false)
+
+  // preload voices (Chrome quirk)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => {}
+    }
+  }, [])
+
+  // Fetch main article
   useEffect(() => {
     const loadPost = async () => {
       try {
         const res = await fetch(`/api/post/getposts?slug=${postSlug}`)
         const data = await res.json()
-
         if (!res.ok) throw new Error()
         setPost(data.posts[0])
       } catch {
@@ -61,19 +76,21 @@ const PostDetails = () => {
     loadPost()
   }, [postSlug])
 
-  // Fetch recent articles
+  // Fetch recent posts
   useEffect(() => {
     const loadRecent = async () => {
       try {
         const res = await fetch(`/api/post/getposts?limit=3`)
         const data = await res.json()
         if (res.ok) setRecentArticles(data.posts)
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
     loadRecent()
   }, [])
 
-  // Reading time
+  // Reading time based on plain text
   const readMinutes = useMemo(() => {
     const plain = (post?.content || "")
       .replace(/<[^>]+>/g, " ")
@@ -84,7 +101,9 @@ const PostDetails = () => {
     return Math.max(1, Math.ceil(words / 225))
   }, [post?.content])
 
-  // Summarize
+  // ============ HANDLERS ============
+
+  // Summarize via backend
   const handleSummarize = async () => {
     if (!post?.content) return
 
@@ -100,7 +119,7 @@ const PostDetails = () => {
       })
 
       const data = await r.json()
-      if (!r.ok) throw new Error(data.error)
+      if (!r.ok) throw new Error(data.error || "Summarization failed")
 
       setSummary(data.summary)
     } catch (err) {
@@ -110,8 +129,9 @@ const PostDetails = () => {
     }
   }
 
-  // Translate FULL HTML (server returns structured HTML)
+  // Translate full HTML via backend
   const handleTranslate = async () => {
+    if (!post?.content) return
     try {
       setTLoading(true)
       setTError("")
@@ -124,7 +144,7 @@ const PostDetails = () => {
       })
 
       const data = await r.json()
-      if (!r.ok) throw new Error(data.error)
+      if (!r.ok) throw new Error(data.error || "Translation failed")
 
       setTranslatedHTML(data.html)
       setIsTranslated(true)
@@ -134,6 +154,137 @@ const PostDetails = () => {
       setTLoading(false)
     }
   }
+
+  // Text-to-speech (front-end only)
+  const handleSpeak = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      alert("Text-to-speech is not supported in this browser.")
+      return
+    }
+
+    const synth = window.speechSynthesis
+
+    // If already speaking → stop
+    if (synth.speaking) {
+      synth.cancel()
+      setIsSpeaking(false)
+      return
+    }
+
+    const rawHTML = isTranslated ? translatedHTML : post?.content || ""
+    const text = rawHTML
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+
+    if (!text) return
+
+    const utter = new SpeechSynthesisUtterance(text)
+    const voices = synth.getVoices()
+    const langCode = (isTranslated ? tgtLang : "en").toLowerCase()
+
+    const voiceMatch =
+      voices.find((v) => v.lang.toLowerCase().startsWith(langCode)) ||
+      voices.find((v) => v.lang.toLowerCase().startsWith("en"))
+
+    if (voiceMatch) utter.voice = voiceMatch
+
+    utter.rate = 1
+    utter.pitch = 1
+    utter.volume = 1
+
+    utter.onstart = () => setIsSpeaking(true)
+    utter.onend = () => setIsSpeaking(false)
+    utter.onerror = () => setIsSpeaking(false)
+
+    synth.speak(utter)
+  }
+
+  // Share article
+  const handleShare = async () => {
+    const url = window.location.href
+    const title = post?.title || "Climate article"
+    const text = `Check out this article: ${title}`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url })
+      } catch {
+        // user cancelled
+      }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url)
+        alert("Link copied to clipboard.")
+      } catch {
+        alert("Share is not supported in this browser.")
+      }
+    } else {
+      alert("Share is not supported in this browser.")
+    }
+  }
+
+  // Download as PDF (html2canvas + jsPDF, with proper margins on all pages)
+  const handleDownload = async () => {
+    try {
+      const element = document.getElementById("pdf-content")
+      if (!element) {
+        alert("PDF layout not found.")
+        return
+      }
+
+      // Render hidden layout to canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
+
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF("p", "mm", "a4")
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      const pdfWidth = pageWidth - margin * 2
+
+      // keep aspect ratio
+      const imgProps = pdf.getImageProperties(imgData)
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+
+      const contentHeightPerPage = pageHeight - margin * 2
+
+      let yOffset = 0
+      let pageIndex = 0
+
+      while (yOffset < pdfHeight) {
+        if (pageIndex > 0) {
+          pdf.addPage()
+        }
+
+        const positionY = margin - yOffset
+
+        pdf.addImage(imgData, "PNG", margin, positionY, pdfWidth, pdfHeight)
+
+        yOffset += contentHeightPerPage
+        pageIndex += 1
+      }
+
+      const fileName =
+        (post?.slug || post?.title?.slice(0, 40) || "climate-article")
+          .toString()
+          .replace(/[^a-z0-9\-]+/gi, "-")
+          .toLowerCase() + ".pdf"
+
+      pdf.save(fileName)
+    } catch (err) {
+      console.error("PDF download failed:", err)
+      alert("Failed to generate PDF. Please try again.")
+    }
+  }
+
+  // ============ LOADING / ERROR ============
 
   if (loading) {
     return (
@@ -155,7 +306,7 @@ const PostDetails = () => {
     )
   }
 
-  // ================= UI ================
+  // ============ UI ============
 
   return (
     <main className="px-4 py-8 max-w-7xl mx-auto min-h-screen mt-16">
@@ -169,7 +320,7 @@ const PostDetails = () => {
           {post.category}
         </Button>
 
-        {/* Meta */}
+        {/* Meta row */}
         <div className="flex flex-wrap items-center justify-center gap-6 mt-6 text-slate-600">
           {post.author && (
             <div className="flex items-center gap-2">
@@ -177,6 +328,7 @@ const PostDetails = () => {
                 src={post.author.profilePicture}
                 alt={post.author.username}
                 className="w-8 h-8 rounded-full object-cover"
+                referrerPolicy="no-referrer"
               />
               <span className="text-sm">{post.author.username}</span>
             </div>
@@ -197,17 +349,45 @@ const PostDetails = () => {
             <Clock className="h-4 w-4" />
             <span className="text-sm">{readMinutes} min read</span>
           </div>
+
+          {/* Share */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleShare}
+              className="rounded-full px-3 py-1 text-xs border-slate-300"
+            >
+              <Share2 className="h-3 w-3 mr-1" />
+              Share
+            </Button>
+          </div>
+
+          {/* Download */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleDownload}
+              className="rounded-full px-3 py-1 text-xs border-slate-300"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Download
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Feature Image */}
+      {/* Featured image */}
       <img
         src={post.image}
         alt={post.title}
         className="w-full max-h-[600px] object-cover rounded-3xl shadow-2xl mb-8"
       />
 
-      {/* ACTION BAR */}
+      {/* Action bar: summarize / translate / speak */}
       <div className="mb-10 flex flex-wrap gap-3 justify-center">
         {/* Summarize */}
         <Button
@@ -226,7 +406,7 @@ const PostDetails = () => {
           )}
         </Button>
 
-        {/* Translate */}
+        {/* Lang select */}
         <select
           value={tgtLang}
           onChange={(e) => setTgtLang(e.target.value)}
@@ -239,6 +419,7 @@ const PostDetails = () => {
           ))}
         </select>
 
+        {/* Translate */}
         <Button
           onClick={handleTranslate}
           disabled={tLoading}
@@ -256,32 +437,40 @@ const PostDetails = () => {
           )}
         </Button>
 
-        {/* Speak (coming up) */}
+        {/* Listen */}
         <Button
-          disabled
+          onClick={handleSpeak}
           variant="outline"
-          className="rounded-full px-4 opacity-60 cursor-not-allowed"
+          className={`rounded-full px-4 ${
+            isSpeaking ? "bg-emerald-50 border-emerald-400" : ""
+          }`}
         >
-          <Volume2 className="h-4 w-4" /> Listen
+          <Volume2 className="h-4 w-4 mr-2" />
+          {isSpeaking ? "Stop" : "Listen"}
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* Summary box */}
       {summary && (
         <div className="max-w-4xl mx-auto mb-10 p-5 bg-emerald-50 rounded-xl">
           <h3 className="font-semibold text-emerald-800 mb-2">Summary</h3>
           <p className="text-slate-800 leading-relaxed">{summary}</p>
         </div>
       )}
+      {sumError && (
+        <div className="max-w-4xl mx-auto mb-10 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+          {sumError}
+        </div>
+      )}
 
-      {/* Translation Errors */}
+      {/* Translation error */}
       {tError && (
         <div className="max-w-4xl mx-auto mb-10 p-3 bg-red-50 text-red-700 rounded-lg">
           {tError}
         </div>
       )}
 
-      {/* ARTICLE */}
+      {/* Visible article */}
       <article className="max-w-4xl mx-auto">
         {isTranslated && (
           <button
@@ -303,6 +492,116 @@ const PostDetails = () => {
         />
       </article>
 
+      {/* Hidden PDF layout (only for download) */}
+      <div
+        id="pdf-content"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "-9999px",
+          opacity: 1,
+          pointerEvents: "none",
+          zIndex: -1,
+          width: "800px",
+          padding: "32px 40px",
+          backgroundColor: "#ffffff",
+          fontFamily: "Helvetica, Arial, sans-serif",
+          boxSizing: "border-box",
+          lineHeight: "1.5",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: "bold",
+            marginBottom: "16px",
+            color: "#047857",
+            lineHeight: "1.3",
+          }}
+        >
+          {post.title}
+        </h1>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "12px",
+            color: "#374151",
+            marginBottom: "20px",
+            paddingBottom: "12px",
+            borderBottom: "1px solid #E5E7EB",
+          }}
+        >
+          <div>
+            <strong>Author:</strong> {post.author?.username || "Unknown author"}
+          </div>
+          <div>
+            <strong>Date:</strong>{" "}
+            {new Date(post.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </div>
+          <div>
+            <strong>Category:</strong> {post.category || "Uncategorized"}
+          </div>
+        </div>
+
+        {post.image && (
+          <div style={{ margin: "0 0 24px 0", textAlign: "center" }}>
+            <img
+              src={post.image}
+              alt={post.title}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "300px",
+                borderRadius: "8px",
+                display: "block",
+                margin: "0 auto",
+              }}
+            />
+          </div>
+        )}
+
+        <div
+          style={{
+            fontSize: "14px",
+            lineHeight: "1.6",
+            color: "#111827",
+          }}
+          dangerouslySetInnerHTML={{
+            __html: isTranslated ? translatedHTML : post.content,
+          }}
+        />
+
+        <div
+          style={{
+            marginTop: "30px",
+            paddingTop: "15px",
+            borderTop: "1px solid #E5E7EB",
+            fontSize: "11px",
+            color: "#6B7280",
+            textAlign: "center",
+          }}
+        >
+          Downloaded from{" "}
+          <span style={{ fontWeight: "bold", color: "#047857" }}>
+            ClimateKhabar
+          </span>{" "}
+          •{" "}
+          {new Date().toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </div>
+      </div>
+
       {/* Ads */}
       <div className="max-w-4xl mx-auto my-16">
         <AdSlot slot="about_banner" />
@@ -311,7 +610,7 @@ const PostDetails = () => {
       {/* Comments */}
       <CommentSection postId={post._id} />
 
-      {/* Recent */}
+      {/* Recent posts */}
       <section className="max-w-7xl mx-auto mt-16">
         <h2 className="text-3xl font-bold text-slate-800 text-center mb-6">
           More Recent Stories
