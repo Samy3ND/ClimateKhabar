@@ -225,64 +225,61 @@ const PostDetails = () => {
   }
 
   // Download as PDF (html2canvas + jsPDF, with proper margins on all pages)
-  const handleDownload = async () => {
-    try {
-      const element = document.getElementById("pdf-content")
-      if (!element) {
-        alert("PDF layout not found.")
-        return
-      }
-
-      // Render hidden layout to canvas
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      })
-
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF("p", "mm", "a4")
-
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 15
-      const pdfWidth = pageWidth - margin * 2
-
-      // keep aspect ratio
-      const imgProps = pdf.getImageProperties(imgData)
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-
-      const contentHeightPerPage = pageHeight - margin * 2
-
-      let yOffset = 0
-      let pageIndex = 0
-
-      while (yOffset < pdfHeight) {
-        if (pageIndex > 0) {
-          pdf.addPage()
-        }
-
-        const positionY = margin - yOffset
-
-        pdf.addImage(imgData, "PNG", margin, positionY, pdfWidth, pdfHeight)
-
-        yOffset += contentHeightPerPage
-        pageIndex += 1
-      }
-
-      const fileName =
-        (post?.slug || post?.title?.slice(0, 40) || "climate-article")
-          .toString()
-          .replace(/[^a-z0-9\-]+/gi, "-")
-          .toLowerCase() + ".pdf"
-
-      pdf.save(fileName)
-    } catch (err) {
-      console.error("PDF download failed:", err)
-      alert("Failed to generate PDF. Please try again.")
+// Download as PDF - Fixed multi-page version
+const handleDownload = async () => {
+  try {
+    const element = document.getElementById("pdf-content")
+    if (!element) {
+      alert("PDF layout not found.")
+      return
     }
+
+    const pdf = new jsPDF("p", "mm", "a4")
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 15
+    const contentWidth = pageWidth - margin * 2
+    const contentHeight = pageHeight - margin * 2 // Usable height per page
+
+    // Render element to canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+    })
+
+    const imgData = canvas.toDataURL("image/png")
+    const imgProps = pdf.getImageProperties(imgData)
+    const imgHeight = (imgProps.height * contentWidth) / imgProps.width // Scaled height
+
+    let heightLeft = imgHeight
+    let position = margin // Start with top margin
+
+    // Add first page
+    pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
+    heightLeft -= contentHeight
+
+    // Add additional pages if needed
+    while (heightLeft > 0) {
+      pdf.addPage()
+      position = margin - (imgHeight - heightLeft) // Negative offset for continuation + top margin
+      pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
+      heightLeft -= contentHeight
+    }
+
+    const fileName =
+      (post?.slug || post?.title?.slice(0, 40) || "climate-article")
+        .toString()
+        .replace(/[^a-z0-9\-]+/gi, "-")
+        .toLowerCase() + ".pdf"
+
+    pdf.save(fileName)
+  } catch (err) {
+    console.error("PDF download failed:", err)
+    alert("Failed to generate PDF. Please try again.")
   }
+}
 
   // ============ LOADING / ERROR ============
 

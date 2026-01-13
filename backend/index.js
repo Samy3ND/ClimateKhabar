@@ -11,6 +11,9 @@ import externalNewsRoutes from "./routes/externalNews.route.js"
 import aiRoutes from "./routes/ai.route.js";
 import translateRoutes from "./routes/translate.route.js";
 
+import weatherRoutes from "./routes/weather.route.js";
+import notificationRoutes from "./routes/notification.route.js";
+
 dotenv.config()
 
 mongoose
@@ -45,6 +48,8 @@ app.use("/api/external", externalNewsRoutes);
 app.use(express.json({ limit: "1mb" }));
 app.use("/api/ai", aiRoutes);
 app.use("/api/translate", translateRoutes);
+app.use("/api/weather", weatherRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500

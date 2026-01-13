@@ -1,6 +1,7 @@
 // controllers/post.controller.js
 import Post from "../models/post.model.js";
-import User from "../models/user.model.js"; // to fetch username/avatar for denorm
+import User from "../models/user.model.js";
+import Notification from "../models/notification.model.js";
 import { errorHandler } from "../utils/error.js";
 import main from "./gemini.js";
 
@@ -38,12 +39,26 @@ export const create = async (req, res, next) => {
       content: req.body.content,
       slug,
 
-      author: req.user.id,                         // ✅ secure source of truth
+      author: req.user.id,
       authorUsername: u?.username,
       authorAvatar: u?.profilePicture,
     });
 
     const saved = await newPost.save();
+
+    // Create Notification
+    try {
+      await Notification.create({
+        recipient: null, // Broadcast to all
+        title: "New Climate Article",
+        message: `New article published: ${saved.title}`,
+        link: `/post/${saved.slug}`,
+        type: 'post'
+      });
+    } catch (notifErr) {
+      console.error("Failed to create notification", notifErr);
+    }
+
     const populated = await saved.populate("author", "username email profilePicture isAdmin");
     res.status(201).json(populated);
   } catch (error) {
@@ -58,7 +73,7 @@ export const getPosts = async (req, res, next) => {
     const sortDirection = req.query.sort === "asc" ? 1 : -1;
 
     const q = {
-      ...(req.query.userId && { author: req.query.userId }), // now matches User._id
+      ...(req.query.userId && { author: req.query.userId }),
       ...(req.query.category && { category: req.query.category }),
       ...(req.query.slug && { slug: req.query.slug }),
       ...(req.query.postId && { _id: req.query.postId }),
@@ -146,26 +161,26 @@ export const updatepost = async (req, res, next) => {
 
 export const generateContent = async (req, res, next) => {
   try {
-    const { prompt } = req.body;  
-    
+    const { prompt } = req.body;
+
     if (!prompt) {
       return res.status(400).json({
-        success: false, 
+        success: false,
         message: "Prompt is required"
       });
     }
-    
+
     console.log("Generating content for:", prompt);
-    
+
     // Make sure you're passing the prompt correctly to main()
     const content = await main(prompt); // Just pass the prompt string
-    
+
     res.json({ success: true, content });
-    
+
   } catch (error) {
     console.error("Backend error in generateContent:", error);
     res.status(500).json({
-      success: false, 
+      success: false,
       message: error.message || "Internal server error in AI generation"
     });
   }

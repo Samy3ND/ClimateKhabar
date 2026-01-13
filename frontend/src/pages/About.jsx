@@ -135,23 +135,24 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                image: "https://cdn-icons-png.flaticon.com/128/3135/3135715.png",
-                name: "Dr. Arjun Sharma",
-                role: "Climate Science Editor",
-                bio: "Former IPCC contributor with 15+ years in environmental research."
-              },
-              {
-                image: "https://cdn-icons-png.flaticon.com/128/4140/4140037.png",
-                name: "Priya Patel",
-                role: "Senior Environmental Reporter",
-                bio: "Award-winning journalist specializing in climate policy and solutions."
-              },
-              {
-                image: "https://cdn-icons-png.flaticon.com/128/6997/6997662.png",
-                name: "Rohan Desai",
-                role: "Digital Sustainability Lead",
-                bio: "Tech innovator focused on green digital tools and outreach."
-              }
+  image: "https://cdn-icons-png.flaticon.com/128/3135/3135715.png",
+  name: "Dr. Shreeram K.C.",
+  role: "Founder & Chief Editor",
+  bio: "Senior climate journalist with 15+ years of environmental reporting experience."
+},
+{
+  image: "https://cdn-icons-png.flaticon.com/128/4140/4140037.png",
+  name: "Samyog K.C.",
+  role: "IT Officer",
+  bio: "Manages platform development, data integration, and technical infrastructure."
+},
+{
+  image: "https://cdn-icons-png.flaticon.com/128/6997/6997662.png",
+  name: "Shova Bogati",
+  role: "Sales & Public Relations",
+  bio: "Leads partnerships, outreach, and public engagement initiatives."
+}
+
             ].map((m, i) => (
               <article
                 key={i}
