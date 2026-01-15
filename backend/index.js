@@ -13,6 +13,7 @@ import translateRoutes from "./routes/translate.route.js";
 
 import weatherRoutes from "./routes/weather.route.js";
 import notificationRoutes from "./routes/notification.route.js";
+import affiliateProductRoutes from "./routes/affiliateProduct.route.js";
 
 dotenv.config()
 
@@ -50,6 +51,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/translate", translateRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/affiliate-products", affiliateProductRoutes);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500

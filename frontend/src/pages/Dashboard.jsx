@@ -5,6 +5,7 @@ import DashboardProfile from "@/components/shared/DashboardProfile"
 import DashboardSidebar from "@/components/shared/DashboardSidebar"
 import DashboardUsers from "@/components/shared/DashboardUsers"
 import MainDashboard from "@/components/shared/MainDashboard"
+import DashboardAffiliateProducts from "@/components/shared/DashboardAffiliateProducts"
 import React, { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 
@@ -47,6 +48,9 @@ const Dashboard = () => {
         {/* comments */}
         {tab === "comments" && <DashboardComments />}
 
+        {/* affiliate products */}
+        {tab === "affiliate-products" && <DashboardAffiliateProducts />}
+
         {/* dashboard main component */}
         {tab === "dashboard" && <MainDashboard />}
       </div>
@@ -55,3 +59,4 @@ const Dashboard = () => {
 }
 
 export default Dashboard
+

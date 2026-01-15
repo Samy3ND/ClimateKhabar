@@ -130,6 +130,20 @@ return (
             </Link>
           </li>
         )}
+
+        {currentUser && currentUser.isAdmin && (
+          <li>
+            <Link
+              to={"/dashboard?tab=affiliate-products"}
+              className="flex items-center p-3 hover:bg-teal-50 rounded-xl transition-all duration-300 group hover:translate-x-2 border border-transparent hover:border-teal-200"
+            >
+              <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-teal-200">
+                <IoIosDocument className="text-teal-600" />
+              </div>
+              <span className="font-medium text-slate-700">Affiliate Products</span>
+            </Link>
+          </li>
+        )}
       </ul>
     </nav>
 

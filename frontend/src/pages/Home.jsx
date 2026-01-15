@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react"
 import HeroCarousel from "@/components/shared/HeroCarousel"
 import ClimateStats from "@/components/shared/ClimateStats"
 import { Link } from "react-router-dom"
+import EcoProducts from "@/components/shared/EcoProducts"
 
 const Home = () => {
   const [posts, setPosts] = useState([])
@@ -107,6 +108,9 @@ const Home = () => {
       <ClimateNews pageSize={6} />
 </section>
 
+{/* ECO-FRIENDLY PRODUCTS - AFFILIATE SECTION */}
+<EcoProducts limit={8} showFilters={true} />
+
     </div>
   )
 }
@@ -114,3 +118,4 @@ const Home = () => {
 
 
 export default Home
+
