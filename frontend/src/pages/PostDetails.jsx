@@ -51,6 +51,8 @@ const PostDetails = () => {
 
   // Text-to-speech
   const [isSpeaking, setIsSpeaking] = useState(false)
+  // PDF Image State
+  const [pdfImgSrc, setPdfImgSrc] = useState("")
 
   // preload voices (Chrome quirk)
   useEffect(() => {
@@ -226,60 +228,84 @@ const PostDetails = () => {
 
   // Download as PDF (html2canvas + jsPDF, with proper margins on all pages)
 // Download as PDF - Fixed multi-page version
-const handleDownload = async () => {
-  try {
-    const element = document.getElementById("pdf-content")
-    if (!element) {
-      alert("PDF layout not found.")
-      return
-    }
+  // Download as PDF - Fixed multi-page version with Base64 Image Preloading
+  const handleDownload = async () => {
+    try {
+      // 1. Preload image as Base64 to bypass CORS issues in html2canvas
+      let finalImgSrc = post?.image || ""
+      if (post?.image) {
+        try {
+          const resp = await fetch(post.image, { mode: "cors" })
+          if (resp.ok) {
+            const blob = await resp.blob()
+            finalImgSrc = await new Promise((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result)
+              reader.readAsDataURL(blob)
+            })
+          }
+        } catch (e) {
+          console.warn("Could not fetch image for PDF (likely CORS). Using original URL.", e)
+        }
+      }
+      setPdfImgSrc(finalImgSrc)
 
-    const pdf = new jsPDF("p", "mm", "a4")
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 15
-    const contentWidth = pageWidth - margin * 2
-    const contentHeight = pageHeight - margin * 2 // Usable height per page
+      // 2. Wait for state to apply and image to render (small delay)
+      await new Promise((r) => setTimeout(r, 500))
 
-    // Render element to canvas
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-    })
+      const element = document.getElementById("pdf-content")
+      if (!element) {
+        alert("PDF layout not found.")
+        return
+      }
 
-    const imgData = canvas.toDataURL("image/png")
-    const imgProps = pdf.getImageProperties(imgData)
-    const imgHeight = (imgProps.height * contentWidth) / imgProps.width // Scaled height
+      const pdf = new jsPDF("p", "mm", "a4")
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      const contentWidth = pageWidth - margin * 2
+      const contentHeight = pageHeight - margin * 2 // Usable height per page
 
-    let heightLeft = imgHeight
-    let position = margin // Start with top margin
+      // Render element to canvas
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      })
 
-    // Add first page
-    pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
-    heightLeft -= contentHeight
+      const imgData = canvas.toDataURL("image/png")
+      const imgProps = pdf.getImageProperties(imgData)
+      const imgHeight = (imgProps.height * contentWidth) / imgProps.width // Scaled height
 
-    // Add additional pages if needed
-    while (heightLeft > 0) {
-      pdf.addPage()
-      position = margin - (imgHeight - heightLeft) // Negative offset for continuation + top margin
+      let heightLeft = imgHeight
+      let position = margin // Start with top margin
+
+      // Add first page
       pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
       heightLeft -= contentHeight
+
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        pdf.addPage()
+        position = margin - (imgHeight - heightLeft) // Negative offset for continuation + top margin
+        pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
+        heightLeft -= contentHeight
+      }
+
+      const fileName =
+        (post?.slug || post?.title?.slice(0, 40) || "climate-article")
+          .toString()
+          .replace(/[^a-z0-9\-]+/gi, "-")
+          .toLowerCase() + ".pdf"
+
+      pdf.save(fileName)
+    } catch (err) {
+      console.error("PDF download failed:", err)
+      alert("Failed to generate PDF. Please try again.")
     }
-
-    const fileName =
-      (post?.slug || post?.title?.slice(0, 40) || "climate-article")
-        .toString()
-        .replace(/[^a-z0-9\-]+/gi, "-")
-        .toLowerCase() + ".pdf"
-
-    pdf.save(fileName)
-  } catch (err) {
-    console.error("PDF download failed:", err)
-    alert("Failed to generate PDF. Please try again.")
   }
-}
 
   // ============ LOADING / ERROR ============
 
@@ -493,12 +519,13 @@ const handleDownload = async () => {
       <div
         id="pdf-content"
         style={{
-          position: "fixed",
+          position: "absolute",
           top: 0,
           left: "-9999px",
+          // left: "0", // DEBUG: Toggle to see the layout on screen
+          // zIndex: 50, // DEBUG
           opacity: 1,
           pointerEvents: "none",
-          zIndex: -1,
           width: "800px",
           padding: "32px 40px",
           backgroundColor: "#ffffff",
@@ -550,8 +577,9 @@ const handleDownload = async () => {
         {post.image && (
           <div style={{ margin: "0 0 24px 0", textAlign: "center" }}>
             <img
-              src={post.image}
+              src={pdfImgSrc || post.image}
               alt={post.title}
+              // crossOrigin="anonymous" 
               style={{
                 maxWidth: "100%",
                 maxHeight: "300px",
