@@ -30,7 +30,7 @@ const DashboardSidebar = () => {
   }
 
 return (
-  <aside className="h-screen w-72 bg-gradient-to-b from-white to-slate-50 text-slate-800 flex flex-col shadow-xl border-r border-slate-200">
+  <aside className="h-[calc(100vh-4rem)] w-72 bg-gradient-to-b from-white to-slate-50 text-slate-800 flex flex-col shadow-xl border-r border-slate-200 sticky top-16 overflow-y-auto">
     {/* Logo/ Header */}
     <div className="p-6 flex items-center justify-between border-b border-slate-200">
       <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ return (
     </nav>
 
     {/* User Info & Logout */}
-    <div className="p-6 border-t border-slate-200">
+    <div className="p-6 pb-8 border-t border-slate-200 mt-auto">
       <div className="flex items-center gap-3 mb-4 p-3 bg-slate-100 rounded-xl">
         <img
           src={currentUser.profilePicture}

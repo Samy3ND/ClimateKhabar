@@ -74,6 +74,12 @@ export const google = async (req, res, next) => {
     const user = await User.findOne({ email })
 
     if (user) {
+      // Update profile picture if it has changed from Google
+      if (profilePhotoUrl && user.profilePicture !== profilePhotoUrl) {
+        user.profilePicture = profilePhotoUrl
+        await user.save()
+      }
+
       const token = jwt.sign(
         { id: user._id, isAdmin: user.isAdmin },
         process.env.JWT_SECRET

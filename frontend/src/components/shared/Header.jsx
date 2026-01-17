@@ -140,11 +140,13 @@ const Header = () => {
       
                   <DropdownMenuSeparator className="bg-slate-200" />
       
-                  <DropdownMenuItem className="px-3 py-2 hover:bg-slate-50 cursor-pointer">
-                    <Link to="/dashboard?tab=dashboard" className="w-full text-slate-700 hover:text-emerald-600">
-                      My Dashboard
-                    </Link>
-                  </DropdownMenuItem>
+                  {currentUser.isAdmin && (
+                    <DropdownMenuItem className="px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                      <Link to="/dashboard?tab=dashboard" className="w-full text-slate-700 hover:text-emerald-600">
+                        My Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
       
                   <DropdownMenuItem className="px-3 py-2 hover:bg-slate-50 cursor-pointer">
                     <Link to="/dashboard?tab=profile" className="w-full text-slate-700 hover:text-emerald-600">
