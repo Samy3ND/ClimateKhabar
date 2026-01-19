@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react"
 import { useParams } from "react-router-dom"
+import { useSelector } from "react-redux"
 import {
   Calendar,
   Clock,
@@ -31,6 +32,7 @@ const LANGS = [
 
 const PostDetails = () => {
   const { postSlug } = useParams()
+  const { currentUser } = useSelector((state) => state.user)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -410,68 +412,70 @@ const PostDetails = () => {
         className="w-full max-h-[600px] object-cover rounded-3xl shadow-2xl mb-8"
       />
 
-      {/* Action bar: summarize / translate / speak */}
-      <div className="mb-10 flex flex-wrap gap-3 justify-center">
-        {/* Summarize */}
-        <Button
-          onClick={handleSummarize}
-          disabled={sumLoading}
-          className="bg-emerald-600 text-white rounded-full px-4"
-        >
-          {sumLoading ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Summarizing…
-            </span>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" /> Summarize
-            </>
-          )}
-        </Button>
+      {/* Action bar: summarize / translate / speak - HIDDEN if not logged in */}
+      {currentUser && (
+        <div className="mb-10 flex flex-wrap gap-3 justify-center">
+          {/* Summarize */}
+          <Button
+            onClick={handleSummarize}
+            disabled={sumLoading}
+            className="bg-emerald-600 text-white rounded-full px-4"
+          >
+            {sumLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Summarizing…
+              </span>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" /> Summarize
+              </>
+            )}
+          </Button>
 
-        {/* Lang select */}
-        <select
-          value={tgtLang}
-          onChange={(e) => setTgtLang(e.target.value)}
-          className="rounded-full border px-3 py-2 text-sm"
-        >
-          {LANGS.map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.label}
-            </option>
-          ))}
-        </select>
+          {/* Lang select */}
+          <select
+            value={tgtLang}
+            onChange={(e) => setTgtLang(e.target.value)}
+            className="rounded-full border px-3 py-2 text-sm"
+          >
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
 
-        {/* Translate */}
-        <Button
-          onClick={handleTranslate}
-          disabled={tLoading}
-          variant="outline"
-          className="rounded-full px-4 border-emerald-300 text-emerald-700"
-        >
-          {tLoading ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Translating…
-            </span>
-          ) : (
-            <>
-              <Languages className="h-4 w-4" /> Translate
-            </>
-          )}
-        </Button>
+          {/* Translate */}
+          <Button
+            onClick={handleTranslate}
+            disabled={tLoading}
+            variant="outline"
+            className="rounded-full px-4 border-emerald-300 text-emerald-700"
+          >
+            {tLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Translating…
+              </span>
+            ) : (
+              <>
+                <Languages className="h-4 w-4" /> Translate
+              </>
+            )}
+          </Button>
 
-        {/* Listen */}
-        <Button
-          onClick={handleSpeak}
-          variant="outline"
-          className={`rounded-full px-4 ${
-            isSpeaking ? "bg-emerald-50 border-emerald-400" : ""
-          }`}
-        >
-          <Volume2 className="h-4 w-4 mr-2" />
-          {isSpeaking ? "Stop" : "Listen"}
-        </Button>
-      </div>
+          {/* Listen */}
+          <Button
+            onClick={handleSpeak}
+            variant="outline"
+            className={`rounded-full px-4 ${
+              isSpeaking ? "bg-emerald-50 border-emerald-400" : ""
+            }`}
+          >
+            <Volume2 className="h-4 w-4 mr-2" />
+            {isSpeaking ? "Stop" : "Listen"}
+          </Button>
+        </div>
+      )}
 
       {/* Summary box */}
       {summary && (
