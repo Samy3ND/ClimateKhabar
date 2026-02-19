@@ -231,30 +231,26 @@ const PostDetails = () => {
   // Download as PDF (html2canvas + jsPDF, with proper margins on all pages)
 // Download as PDF - Fixed multi-page version
   // Download as PDF - Fixed multi-page version with Base64 Image Preloading
+  // Helper to convert Image URL to Base64
+  const getBase64Image = async (imgUrl) => {
+    if (!imgUrl || imgUrl.startsWith("data:")) return imgUrl
+    try {
+      const resp = await fetch(imgUrl, { mode: "cors" })
+      if (!resp.ok) return imgUrl
+      const blob = await resp.blob()
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result)
+        reader.readAsDataURL(blob)
+      })
+    } catch (e) {
+      console.warn("Could not fetch image for PDF (likely CORS):", imgUrl)
+      return imgUrl
+    }
+  }
+
   const handleDownload = async () => {
     try {
-      // 1. Preload image as Base64 to bypass CORS issues in html2canvas
-      let finalImgSrc = post?.image || ""
-      if (post?.image) {
-        try {
-          const resp = await fetch(post.image, { mode: "cors" })
-          if (resp.ok) {
-            const blob = await resp.blob()
-            finalImgSrc = await new Promise((resolve) => {
-              const reader = new FileReader()
-              reader.onloadend = () => resolve(reader.result)
-              reader.readAsDataURL(blob)
-            })
-          }
-        } catch (e) {
-          console.warn("Could not fetch image for PDF (likely CORS). Using original URL.", e)
-        }
-      }
-      setPdfImgSrc(finalImgSrc)
-
-      // 2. Wait for state to apply and image to render (small delay)
-      await new Promise((r) => setTimeout(r, 500))
-
       const element = document.getElementById("pdf-content")
       if (!element) {
         alert("PDF layout not found.")
@@ -266,46 +262,60 @@ const PostDetails = () => {
       const pageHeight = pdf.internal.pageSize.getHeight()
       const margin = 15
       const contentWidth = pageWidth - margin * 2
-      const contentHeight = pageHeight - margin * 2 // Usable height per page
+      const usablePageHeight = pageHeight - margin * 2
 
-      // Render element to canvas
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: "#ffffff",
         logging: false,
+        onclone: async (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById("pdf-content")
+          const images = clonedElement.getElementsByTagName("img")
+          
+          const conversionPromises = Array.from(images).map(async (img) => {
+            img.setAttribute("crossorigin", "anonymous") // Force CORS headers
+            if (img.src && !img.src.startsWith("data:")) {
+              const b64 = await getBase64Image(img.src)
+              img.src = b64
+            }
+          })
+          
+          await Promise.all(conversionPromises)
+          // Increased delay to ensure the browser registers the base64 source swap
+          await new Promise(r => setTimeout(r, 400))
+        }
       })
 
       const imgData = canvas.toDataURL("image/png")
       const imgProps = pdf.getImageProperties(imgData)
-      const imgHeight = (imgProps.height * contentWidth) / imgProps.width // Scaled height
+      const imgHeight = (imgProps.height * contentWidth) / imgProps.width
 
       let heightLeft = imgHeight
-      let position = margin // Start with top margin
+      let position = margin
 
-      // Add first page
+      // First page
       pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
-      heightLeft -= contentHeight
+      heightLeft -= usablePageHeight
 
-      // Add additional pages if needed
+      // Additional pages
       while (heightLeft > 0) {
         pdf.addPage()
-        position = margin - (imgHeight - heightLeft) // Negative offset for continuation + top margin
+        position = margin - (imgHeight - heightLeft)
         pdf.addImage(imgData, "PNG", margin, position, contentWidth, imgHeight)
-        heightLeft -= contentHeight
+        heightLeft -= usablePageHeight
       }
 
-      const fileName =
-        (post?.slug || post?.title?.slice(0, 40) || "climate-article")
-          .toString()
-          .replace(/[^a-z0-9\-]+/gi, "-")
-          .toLowerCase() + ".pdf"
+      const fileName = (post?.slug || "climate-article")
+        .toString()
+        .replace(/[^a-z0-9\-]+/gi, "-")
+        .toLowerCase() + ".pdf"
 
       pdf.save(fileName)
     } catch (err) {
       console.error("PDF download failed:", err)
-      alert("Failed to generate PDF. Please try again.")
+      alert("Failed to generate PDF. Check console for CORS errors.")
     }
   }
 
