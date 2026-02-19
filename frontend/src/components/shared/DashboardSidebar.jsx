@@ -154,6 +154,10 @@ return (
           src={currentUser.profilePicture}
           alt="Profile"
           className="w-10 h-10 rounded-full border-2 border-emerald-500/30 shadow-sm"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            e.target.src = "https://cdn-icons-png.flaticon.com/128/3177/3177440.png";
+          }}
         />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate text-slate-800">@{currentUser.username}</p>

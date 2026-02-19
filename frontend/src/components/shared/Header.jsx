@@ -120,6 +120,10 @@ const Header = () => {
                       src={currentUser.profilePicture}
                       alt="user photo"
                       className="w-10 h-10 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.src = "https://cdn-icons-png.flaticon.com/128/3177/3177440.png";
+                      }}
                     />
                   </button>
                 </DropdownMenuTrigger>

@@ -144,6 +144,10 @@ const DashboardUsers = () => {
                           src={user.profilePicture}
                           alt={user.username}
                           className="w-10 h-10 object-cover rounded-full border-2 border-slate-200 shadow-sm"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.target.src = "https://cdn-icons-png.flaticon.com/128/3177/3177440.png";
+                          }}
                         />
                       </TableCell>
 

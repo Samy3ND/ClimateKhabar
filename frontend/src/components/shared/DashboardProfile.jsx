@@ -176,6 +176,7 @@ return (
               <img
                 src={imageFileUrl || currentUser.profilePicture}
                 alt="Profile"
+                referrerPolicy="no-referrer"
                 className="rounded-full w-full h-full object-cover border-4 border-slate-200 group-hover:border-emerald-400 transition-all duration-300 shadow-lg"
               />
               <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">

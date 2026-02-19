@@ -78,6 +78,10 @@ export const google = async (req, res, next) => {
       if (profilePhotoUrl && user.profilePicture !== profilePhotoUrl) {
         user.profilePicture = profilePhotoUrl
         await user.save()
+      } else if (!user.profilePicture && profilePhotoUrl) {
+        // Handle case where existing user has no picture but Google provides one
+        user.profilePicture = profilePhotoUrl
+        await user.save()
       }
 
       const token = jwt.sign(
@@ -108,7 +112,7 @@ export const google = async (req, res, next) => {
         Math.random().toString(9).slice(-4),
       email,
       password: hashedPassword,
-      profilePicture: profilePhotoUrl,
+      profilePicture: profilePhotoUrl || undefined,
     })
 
     await newUser.save()
